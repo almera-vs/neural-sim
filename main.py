@@ -9,18 +9,18 @@ from typing import List, Tuple, Set
 pygame.init()
 
 # Constants
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1200, 800
 RADIUS = 350
 NUM_NEURONS_MIN = 20
 NUM_NEURONS_MAX = 200
 NUM_NEURONS = 50  # Initial number of neurons
 CONNECTION_DISTANCE = 0.5  # Maximum distance for neuron connections (in radians)
 MAX_CONNECTIONS = 6  # Maximum number of connections per neuron
-ACTIVATION_SPREAD = 0.2  # How much activation spreads between neurons
+ACTIVATION_SPREAD = 0.25  # How much activation spreads between neurons
 ACTIVATION_DECAY = 0.98  # How quickly activation decays
 NEURON_RADIUS_MIN = 3
 NEURON_RADIUS_MAX = 8
-FPS = 60
+FPS = 120
 
 # Visual Effects
 PULSE_SPEED = 3.0  # Speed of color pulsing
@@ -56,7 +56,7 @@ class Camera:
         self.min_distance = 0.5
         self.max_distance = 2.0
         self.auto_rotate = True  # Enable auto-rotation by default
-        self.auto_rotate_speed = 0.002  # Speed of automatic rotation
+        self.auto_rotate_speed = 0.0008  # Speed of automatic rotation
 
     def rotate(self, dx: float, dy: float):
         # Allow unlimited rotation in all directions
