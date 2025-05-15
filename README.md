@@ -2,6 +2,8 @@
 
 A real-time, interactive neural sphere simulation using Python and Pygame that represents a simplified, biologically-inspired brain.
 
+![demo](./media/demo.png)
+
 ## Features
 
 - Neurons are distributed on the surface of a 3D sphere, projected into 2D for visualization
@@ -14,6 +16,8 @@ A real-time, interactive neural sphere simulation using Python and Pygame that r
 - Multiple color schemes to visualize the neural network differently
 - Real-time statistics panel showing network activity metrics
 - Save and load network configurations
+
+![demo](./media/demo2.png)
 
 ## Requirements
 
