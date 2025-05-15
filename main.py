@@ -3,7 +3,9 @@ import numpy as np
 import math
 import random
 import time
-from typing import List, Tuple, Set
+import json
+import os
+from typing import List, Tuple, Set, Dict, Any, Optional
 
 # Initialize Pygame
 try:
@@ -52,18 +54,177 @@ COLOR_VARIATION = 0.2  # Amount of color variation in pulsing
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (100, 100, 100)
+LIGHT_GRAY = (150, 150, 150)
 INACTIVE_COLOR = (100, 100, 100)
 ACTIVATION_COLOR_MIN = (100, 100, 100)  # Light blue (low activation)
 ACTIVATION_COLOR_MAX = (0, 100, 255)    # Dark blue (high activation)
 INACTIVE_CONNECTION_COLOR = (50, 50, 150, 100)  # Semi-transparent dark blue
 SLIDER_COLOR = (150, 150, 150)
 SLIDER_ACTIVE_COLOR = (200, 200, 200)
+PANEL_BG_COLOR = (20, 20, 40, 200)  # Semi-transparent dark blue background for panels
 
 # UI Elements
 SLIDER_HEIGHT = 20
 SLIDER_Y = HEIGHT - 40
 SLIDER_WIDTH = 200
 SLIDER_X = WIDTH - SLIDER_WIDTH - 20
+STATS_PANEL_WIDTH = 250
+STATS_PANEL_HEIGHT = 180
+STATS_PANEL_X = WIDTH - STATS_PANEL_WIDTH - 10
+STATS_PANEL_Y = 10
+BUTTON_WIDTH = 120
+BUTTON_HEIGHT = 30
+BUTTON_PADDING = 10
+SAVE_BUTTON_X = 10
+SAVE_BUTTON_Y = 40
+LOAD_BUTTON_X = 10
+LOAD_BUTTON_Y = 80
+COLOR_BUTTON_X = 10
+COLOR_BUTTON_Y = 120
+GRAPH_BUTTON_X = 10
+GRAPH_BUTTON_Y = 160
+GRAPH_PANEL_WIDTH = 300
+GRAPH_PANEL_HEIGHT = 200
+GRAPH_PANEL_X = (WIDTH - GRAPH_PANEL_WIDTH) // 2
+GRAPH_PANEL_Y = HEIGHT - GRAPH_PANEL_HEIGHT - 60
+
+# Color schemes
+class ColorScheme:
+    def __init__(self, name: str, 
+                 bg_color: Tuple[int, int, int],
+                 inactive_color: Tuple[int, int, int],
+                 activation_color_min: Tuple[int, int, int],
+                 activation_color_max: Tuple[int, int, int],
+                 functional_color: Optional[Tuple[int, int, int]] = None,
+                 connection_color: Optional[Tuple[int, int, int, int]] = None,
+                 panel_bg_color: Optional[Tuple[int, int, int, int]] = None):
+        self.name = name
+        self.bg_color = bg_color
+        self.inactive_color = inactive_color
+        self.activation_color_min = activation_color_min
+        self.activation_color_max = activation_color_max
+        self.functional_color = functional_color or activation_color_max
+        self.connection_color = connection_color or (50, 50, 150, 100)
+        self.panel_bg_color = panel_bg_color or (20, 20, 40, 200)
+
+# Define color schemes
+COLOR_SCHEMES = [
+    ColorScheme(
+        "Default Blue", 
+        BLACK, 
+        (100, 100, 100),  # Inactive
+        (100, 100, 100),  # Min activation
+        (0, 100, 255)     # Max activation
+    ),
+    ColorScheme(
+        "Neural Green", 
+        (0, 0, 0), 
+        (80, 80, 80),
+        (50, 80, 50),
+        (0, 220, 100),
+        functional_color=(20, 250, 120),
+        connection_color=(0, 100, 50, 100)
+    ),
+    ColorScheme(
+        "Deep Purple", 
+        (10, 5, 20), 
+        (80, 70, 100),
+        (70, 40, 120),
+        (180, 60, 220),
+        functional_color=(220, 70, 255),
+        connection_color=(100, 40, 200, 100),
+        panel_bg_color=(40, 20, 60, 200)
+    ),
+    ColorScheme(
+        "Amber Brain", 
+        (20, 10, 0), 
+        (100, 80, 40),
+        (120, 80, 20),
+        (255, 180, 0),
+        functional_color=(255, 200, 50),
+        connection_color=(150, 100, 0, 100)
+    ),
+    ColorScheme(
+        "Matrix Code", 
+        (0, 0, 0), 
+        (30, 70, 30),
+        (0, 100, 0),
+        (0, 255, 100),
+        functional_color=(150, 255, 150),
+        connection_color=(0, 100, 0, 100)
+    ),
+    ColorScheme(
+        "Midnight", 
+        (0, 10, 25), 
+        (50, 60, 80),
+        (50, 100, 150),
+        (140, 200, 255),
+        functional_color=(210, 230, 255),
+        connection_color=(70, 130, 200, 100),
+        panel_bg_color=(10, 20, 40, 200)
+    )
+]
+
+# Current scheme index
+CURRENT_SCHEME_INDEX = 0
+current_scheme = COLOR_SCHEMES[CURRENT_SCHEME_INDEX]
+
+# Colors - will be updated from the color scheme
+BLACK = current_scheme.bg_color
+WHITE = (255, 255, 255)
+GRAY = current_scheme.inactive_color
+LIGHT_GRAY = (150, 150, 150)
+INACTIVE_COLOR = current_scheme.inactive_color  
+ACTIVATION_COLOR_MIN = current_scheme.activation_color_min
+ACTIVATION_COLOR_MAX = current_scheme.activation_color_max
+INACTIVE_CONNECTION_COLOR = current_scheme.connection_color
+SLIDER_COLOR = (150, 150, 150)
+SLIDER_ACTIVE_COLOR = (200, 200, 200)
+PANEL_BG_COLOR = current_scheme.panel_bg_color
+
+# UI Elements
+SLIDER_HEIGHT = 20
+SLIDER_Y = HEIGHT - 40
+SLIDER_WIDTH = 200
+SLIDER_X = WIDTH - SLIDER_WIDTH - 20
+STATS_PANEL_WIDTH = 250
+STATS_PANEL_HEIGHT = 180
+STATS_PANEL_X = WIDTH - STATS_PANEL_WIDTH - 10
+STATS_PANEL_Y = 10
+BUTTON_WIDTH = 120
+BUTTON_HEIGHT = 30
+BUTTON_PADDING = 10
+SAVE_BUTTON_X = 10
+SAVE_BUTTON_Y = 40
+LOAD_BUTTON_X = 10
+LOAD_BUTTON_Y = 80
+COLOR_BUTTON_X = 10
+COLOR_BUTTON_Y = 120
+GRAPH_BUTTON_X = 10
+GRAPH_BUTTON_Y = 160
+GRAPH_PANEL_WIDTH = 300
+GRAPH_PANEL_HEIGHT = 200
+GRAPH_PANEL_X = (WIDTH - GRAPH_PANEL_WIDTH) // 2
+GRAPH_PANEL_Y = HEIGHT - GRAPH_PANEL_HEIGHT - 60
+
+def update_color_scheme(index: int):
+    """Update global colors based on the selected color scheme"""
+    global current_scheme, CURRENT_SCHEME_INDEX
+    global BLACK, INACTIVE_COLOR, ACTIVATION_COLOR_MIN, ACTIVATION_COLOR_MAX
+    global INACTIVE_CONNECTION_COLOR, PANEL_BG_COLOR
+    
+    CURRENT_SCHEME_INDEX = index % len(COLOR_SCHEMES)
+    current_scheme = COLOR_SCHEMES[CURRENT_SCHEME_INDEX]
+    
+    # Update global colors
+    BLACK = current_scheme.bg_color
+    INACTIVE_COLOR = current_scheme.inactive_color  
+    ACTIVATION_COLOR_MIN = current_scheme.activation_color_min
+    ACTIVATION_COLOR_MAX = current_scheme.activation_color_max
+    INACTIVE_CONNECTION_COLOR = current_scheme.connection_color
+    PANEL_BG_COLOR = current_scheme.panel_bg_color
+    
+    print(f"Color scheme changed to: {current_scheme.name}")
 
 class Camera:
     def __init__(self):
@@ -423,21 +584,25 @@ class Neuron:
                 if self.firing:
                     # Intense, pulsing color when firing (functional neurons)
                     pulse = math.sin(time.time() * 12 + self.phase_offset) * 0.2 + 0.8
-                    r = int(ACTIVATION_COLOR_MIN[0] * 0.7)
-                    g = int(ACTIVATION_COLOR_MIN[1] * 1.2 + 20 * pulse)
-                    b = int(min(255, 255 * self.activation * pulse))
+                    
+                    # Get the functional color from current scheme
+                    functional_base = current_scheme.functional_color
+                    r = int(functional_base[0] * 0.7)
+                    g = int(functional_base[1] * 1.2 + 20 * pulse)
+                    b = int(min(255, functional_base[2] * self.activation * pulse))
                 elif self.refractory_time > 0:
                     # Darker, subdued color during refractory period
                     r = int(ACTIVATION_COLOR_MIN[0] * 0.9)
                     g = int(ACTIVATION_COLOR_MIN[1] * 0.8)
                     b = int(min(255, 150 * self.activation))
                 else:
-                    # Normal functional neuron color
-                    r = int(ACTIVATION_COLOR_MIN[0] + (ACTIVATION_COLOR_MAX[0] - ACTIVATION_COLOR_MIN[0]) * self.activation * 0.8)
-                    g = int(ACTIVATION_COLOR_MIN[1] + (ACTIVATION_COLOR_MAX[1] - ACTIVATION_COLOR_MIN[1]) * self.activation * 1.1)
-                    b = int(ACTIVATION_COLOR_MIN[2] + (ACTIVATION_COLOR_MAX[2] - ACTIVATION_COLOR_MIN[2]) * self.activation * 1.2)
+                    # Normal functional neuron color - use the current scheme's functional color
+                    functional_base = current_scheme.functional_color
+                    r = int(ACTIVATION_COLOR_MIN[0] + (functional_base[0] - ACTIVATION_COLOR_MIN[0]) * self.activation * 0.8)
+                    g = int(ACTIVATION_COLOR_MIN[1] + (functional_base[1] - ACTIVATION_COLOR_MIN[1]) * self.activation * 1.1)
+                    b = int(ACTIVATION_COLOR_MIN[2] + (functional_base[2] - ACTIVATION_COLOR_MIN[2]) * self.activation * 1.2)
             else:
-                # Regular neurons
+                # Regular neurons - use the current scheme's activation colors
                 if self.firing:
                     # Relay neurons also pulse when firing, but less intensely
                     pulse = math.sin(time.time() * 8 + self.phase_offset) * 0.15 + 0.85
@@ -627,6 +792,55 @@ class Neuron:
             else:
                 # Regular smooth transitions for non-functional neurons
                 self.layer_values[i] = self.layer_values[i] * 0.85 + target_value * 0.15
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert neuron state to a dictionary for serialization"""
+        data = {
+            'position': self.base_position_3d.tolist(),
+            'activation': float(self.activation),
+            'active': self.active,
+            'is_functional': self.is_functional,
+            'label': self.label if hasattr(self, 'label') else None,
+            'base_activation': float(self.base_activation),
+            'phase_offset': float(self.phase_offset)
+        }
+        
+        # Add layer values if they exist
+        if hasattr(self, 'layer_values'):
+            data['layer_values'] = [float(val) for val in self.layer_values]
+            
+        # Add layer biases if they exist
+        if hasattr(self, 'layer_biases'):
+            data['layer_biases'] = [float(bias) for bias in self.layer_biases]
+            
+        return data
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Neuron':
+        """Create a neuron from a dictionary (for deserialization)"""
+        # Create neuron with position data
+        neuron = cls(np.array(data['position']))
+        
+        # Set basic properties
+        neuron.activation = float(data['activation'])
+        neuron.active = bool(data['active'])
+        neuron.is_functional = bool(data['is_functional'])
+        neuron.base_activation = float(data['base_activation'])
+        neuron.phase_offset = float(data['phase_offset'])
+        
+        # Set label if available
+        if data['label']:
+            neuron.label = data['label']
+            
+        # Set layer values if available
+        if 'layer_values' in data:
+            neuron.layer_values = [float(val) for val in data['layer_values']]
+            
+        # Set layer biases if available
+        if 'layer_biases' in data:
+            neuron.layer_biases = [float(bias) for bias in data['layer_biases']]
+            
+        return neuron
 
 def calculate_surface_distance(p1: np.ndarray, p2: np.ndarray) -> float:
     """Calculate the geodesic distance between two points on a unit sphere"""
@@ -953,11 +1167,11 @@ def draw_neurons(screen: pygame.Surface, neurons: List[Neuron], current_time: fl
                     
                     # Simplified color calculation
                     if inactive:
-                        # Simpler inactive color
-                        r = int(50 * depth)
-                        g = int(50 * depth)
-                        b = int(50 * depth)
-                        alpha = int(100 * depth)
+                        # Use the current scheme's inactive connection color
+                        r = int(current_scheme.connection_color[0] * depth)
+                        g = int(current_scheme.connection_color[1] * depth)
+                        b = int(current_scheme.connection_color[2] * depth)
+                        alpha = int(current_scheme.connection_color[3] * depth)
                         color = (r, g, b, alpha)
                         
                         # Draw the connection with appropriate alpha
@@ -966,11 +1180,12 @@ def draw_neurons(screen: pygame.Surface, neurons: List[Neuron], current_time: fl
                                        max(1, int(strength * 2)))
                         screen.blit(temp_surface, (0, 0))
                     else:
-                        # Active connection - simpler color formula
+                        # Use the current scheme's active connection color
+                        base_connection_color = current_scheme.connection_color
                         color = (
-                            0,  # No red
-                            int(55 * depth),  # A bit of green
-                            int(150 * depth + 50 * strength)  # More blue for stronger connections
+                            int(base_connection_color[0] * 0.5 * depth),  # Reduce red component
+                            int(base_connection_color[1] * depth + 30 * strength),  # More green for stronger connections
+                            int(base_connection_color[2] * depth + 50 * strength)  # More blue for stronger connections
                         )
                         pygame.draw.line(screen, color, neuron.position_2d, connection.position_2d, 
                                        max(1, int(strength * 2)))
@@ -1061,56 +1276,541 @@ def draw_controls(screen: pygame.Surface):
         "Left-click - Toggle neuron",
         "Left-click & drag - Rotate view",
         "Mouse wheel - Zoom",
-        "Right-click - Activate neuron"
+        "Right-click - Activate neuron",
+        "G - Toggle graph visibility",
+        "A - Toggle auto-rotation",
+        "C - Cycle color schemes"
     ]
     
     for i, text in enumerate(texts):
         text_surface = font.render(text, True, WHITE)
-        screen.blit(text_surface, (10, HEIGHT - 120 + i*20))
+        screen.blit(text_surface, (10, HEIGHT - 160 + i*20))
+
+def draw_loading_screen(screen, progress, message, sub_message=""):
+    """Draw an animated loading screen with progress bar
+    
+    Args:
+        screen: The pygame surface to draw on
+        progress: A value between 0 and 1 indicating loading progress
+        message: The main message to display
+        sub_message: Optional detailed status message
+    """
+    # Fill background
+    screen.fill(BLACK)
+    
+    # Draw title (moved higher up on screen)
+    font_title = pygame.font.SysFont(None, 48)
+    title = font_title.render("Neural Sphere Simulation", True, WHITE)
+    screen.blit(title, (WIDTH//2 - title.get_width()//2, HEIGHT//6))  # Higher position
+    
+    # Draw animated neurons in background (moved down to avoid overlapping with title)
+    current_time = time.time()
+    # Use a larger radius to avoid overlapping with title/progress bar
+    ring_center_y = HEIGHT//2 - 30  # Center point for the ring
+    radius = 150  # Larger radius for better spacing
+    
+    for i in range(10):
+        # Create pulsing effect
+        pulse = (math.sin(current_time * 2 + i * 0.5) + 1) / 2
+        size = int(5 + pulse * 8)
+        
+        # Random positions forming a circle around center
+        angle = i * math.pi / 5 + current_time * 0.2
+        x = WIDTH//2 + int(radius * math.cos(angle))
+        y = ring_center_y + int(radius * math.sin(angle))
+        
+        # Color based on position
+        hue = (i / 10) * 0.6 + 0.2  # Blue to purple range
+        color = hsv_to_rgb(hue, 0.7, 0.8 + pulse * 0.2)
+        
+        # Draw neuron
+        pygame.draw.circle(screen, color, (x, y), size)
+        
+        # Draw connections
+        next_i = (i + 1) % 10
+        next_angle = next_i * math.pi / 5 + current_time * 0.2
+        next_x = WIDTH//2 + int(radius * math.cos(next_angle))
+        next_y = ring_center_y + int(radius * math.sin(next_angle))
+        
+        # Animated connection
+        connection_pulse = (math.sin(current_time * 3 + i * 0.5) + 1) / 2
+        connection_alpha = int(100 + connection_pulse * 155)
+        connection_color = (*color[:3], connection_alpha)
+        
+        # Draw on temporary surface for alpha
+        temp_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        pygame.draw.line(temp_surface, connection_color, (x, y), (next_x, next_y), 2)
+        screen.blit(temp_surface, (0, 0))
+    
+    # Draw progress bar background (moved lower down on screen)
+    bar_width = WIDTH * 0.6
+    bar_height = 20
+    bar_x = WIDTH//2 - bar_width//2
+    bar_y = HEIGHT * 3//4  # Lower position
+    pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height))
+    
+    # Draw progress bar fill
+    fill_width = bar_width * progress
+    if fill_width > 0:
+        pygame.draw.rect(screen, ACTIVATION_COLOR_MAX, (bar_x, bar_y, fill_width, bar_height))
+    
+    # Draw percentage
+    font_percent = pygame.font.SysFont(None, 24)
+    percent_text = f"{int(progress * 100)}%"
+    percent_surface = font_percent.render(percent_text, True, WHITE)
+    screen.blit(percent_surface, (bar_x + bar_width + 10, bar_y))
+    
+    # Draw message
+    font_message = pygame.font.SysFont(None, 32)
+    message_surface = font_message.render(message, True, WHITE)
+    screen.blit(message_surface, (WIDTH//2 - message_surface.get_width()//2, bar_y - 40))
+    
+    # Draw sub-message (status details)
+    if sub_message:
+        font_sub = pygame.font.SysFont(None, 24)
+        sub_surface = font_sub.render(sub_message, True, (200, 200, 200))
+        screen.blit(sub_surface, (WIDTH//2 - sub_surface.get_width()//2, bar_y + 40))
+    
+    # Draw tip at bottom - use a persistent tip instead of random changing tips
+    # Base the tip on the progress value to change less frequently
+    font_tip = pygame.font.SysFont(None, 20)
+    tip_messages = [
+        "Tip: Left-click to toggle neurons",
+        "Tip: Right-click to activate neurons",
+        "Tip: Drag to rotate the view",
+        "Tip: Use mouse wheel to zoom",
+        "Tip: Functional neurons have special behaviors",
+        "Tip: Each neuron type has different deep layer values",
+        "Tip: Hover over neurons to see details"
+    ]
+    # Change tip based on loading phase (changes only 5 times during entire loading)
+    tip_index = min(int(progress * 5), len(tip_messages) - 1)
+    tip = tip_messages[tip_index]
+    tip_surface = font_tip.render(tip, True, (150, 150, 150))
+    screen.blit(tip_surface, (WIDTH//2 - tip_surface.get_width()//2, HEIGHT - 50))
+    
+    # Update display
+    pygame.display.flip()
+
+def hsv_to_rgb(h, s, v):
+    """Convert HSV color to RGB
+    
+    Args:
+        h: Hue (0-1)
+        s: Saturation (0-1)
+        v: Value (0-1)
+    
+    Returns:
+        Tuple of (r, g, b) with values 0-255
+    """
+    if s == 0.0:
+        return (int(v * 255), int(v * 255), int(v * 255))
+    
+    i = int(h * 6.0)
+    f = (h * 6.0) - i
+    p = v * (1.0 - s)
+    q = v * (1.0 - s * f)
+    t = v * (1.0 - s * (1.0 - f))
+    i %= 6
+    
+    if i == 0:
+        return (int(v * 255), int(t * 255), int(p * 255))
+    elif i == 1:
+        return (int(q * 255), int(v * 255), int(p * 255))
+    elif i == 2:
+        return (int(p * 255), int(v * 255), int(t * 255))
+    elif i == 3:
+        return (int(p * 255), int(q * 255), int(v * 255))
+    elif i == 4:
+        return (int(t * 255), int(p * 255), int(v * 255))
+    else:
+        return (int(v * 255), int(p * 255), int(q * 255))
+
+def draw_statistics_panel(screen: pygame.Surface, neurons: List[Neuron], current_time: float):
+    """Draw a panel with real-time statistics about the neural network"""
+    # Create a semi-transparent panel
+    panel_surface = pygame.Surface((STATS_PANEL_WIDTH, STATS_PANEL_HEIGHT), pygame.SRCALPHA)
+    pygame.draw.rect(panel_surface, PANEL_BG_COLOR, panel_surface.get_rect(), border_radius=5)
+    
+    # Calculate statistics
+    active_neurons = sum(1 for n in neurons if n.active)
+    firing_neurons = sum(1 for n in neurons if n.firing and n.active)
+    functional_neurons = sum(1 for n in neurons if hasattr(n, 'is_functional') and n.is_functional and n.active)
+    
+    # Calculate average activation
+    total_activation = sum(n.activation for n in neurons if n.active)
+    avg_activation = total_activation / max(1, active_neurons)
+    
+    # Calculate network energy (sum of squared activations)
+    network_energy = sum(n.activation ** 2 for n in neurons if n.active)
+    
+    # Calculate average weights
+    all_weights = []
+    for n in neurons:
+        if hasattr(n, 'connection_weights'):
+            all_weights.extend(n.connection_weights.values())
+    avg_weight = sum(all_weights) / max(1, len(all_weights))
+    
+    # Prepare statistics text
+    font = pygame.font.SysFont(None, 22)
+    title_font = pygame.font.SysFont(None, 24)
+    stats = [
+        ("Network Statistics", None, True),  # Title
+        ("Neurons", f"{active_neurons}/{len(neurons)}"),
+        ("Firing", f"{firing_neurons} ({firing_neurons/max(1, active_neurons):.1%})"),
+        ("Functional", f"{functional_neurons} ({functional_neurons/max(1, len(neurons)):.1%})"),
+        ("Avg. Activation", f"{avg_activation:.3f}"),
+        ("Network Energy", f"{network_energy:.3f}"),
+        ("Avg. Connection", f"{avg_weight:.3f}"),
+        ("Simulation Time", f"{current_time:.1f}s")
+    ]
+    
+    # Draw statistics
+    y_offset = 10
+    for i, stat in enumerate(stats):
+        if len(stat) == 3:  # Title
+            # Draw title with underline
+            text = title_font.render(stat[0], True, WHITE)
+            panel_surface.blit(text, (10, y_offset))
+            pygame.draw.line(panel_surface, WHITE, 
+                           (10, y_offset + text.get_height() + 2), 
+                           (STATS_PANEL_WIDTH - 20, y_offset + text.get_height() + 2), 1)
+            y_offset += text.get_height() + 10
+        else:
+            name, value = stat
+            name_text = font.render(name + ":", True, WHITE)
+            value_text = font.render(value, True, LIGHT_GRAY)
+            panel_surface.blit(name_text, (15, y_offset))
+            panel_surface.blit(value_text, (STATS_PANEL_WIDTH - value_text.get_width() - 15, y_offset))
+            y_offset += name_text.get_height() + 6
+    
+    screen.blit(panel_surface, (STATS_PANEL_X, STATS_PANEL_Y))
+
+def save_network_configuration(neurons: List[Neuron], filename: str = "network_config.json"):
+    """Save the current network configuration to a file"""
+    try:
+        # Create data directory if it doesn't exist
+        os.makedirs("data", exist_ok=True)
+        
+        # Prepare the data structure
+        data = {
+            'version': '1.0',
+            'timestamp': time.time(),
+            'neuron_count': len(neurons),
+            'neurons': [neuron.to_dict() for neuron in neurons]
+        }
+        
+        # Save to file
+        with open(os.path.join("data", filename), 'w') as f:
+            json.dump(data, f, indent=2)
+            
+        print(f"Network configuration saved to data/{filename}")
+        return True
+    except Exception as e:
+        print(f"Error saving network configuration: {e}")
+        return False
+
+def load_network_configuration(filename: str = "network_config.json") -> Optional[List[Neuron]]:
+    """Load a network configuration from a file"""
+    try:
+        # Check if file exists
+        file_path = os.path.join("data", filename)
+        if not os.path.exists(file_path):
+            print(f"Configuration file {file_path} not found")
+            return None
+        
+        # Load the file
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+            
+        # Check version compatibility
+        if 'version' not in data or data['version'] != '1.0':
+            print(f"Warning: Configuration file version mismatch")
+            
+        # Create neurons
+        neurons = [Neuron.from_dict(neuron_data) for neuron_data in data['neurons']]
+        
+        # Re-create connections
+        create_connections(neurons)
+        
+        print(f"Loaded {len(neurons)} neurons from {file_path}")
+        return neurons
+    except Exception as e:
+        print(f"Error loading network configuration: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def draw_button(screen: pygame.Surface, text: str, x: int, y: int, width: int, height: int, 
+               color: Tuple[int, int, int], hover: bool = False) -> pygame.Rect:
+    """Draw a button and return its rect for click detection"""
+    button_rect = pygame.Rect(x, y, width, height)
+    
+    # Draw button with different color when hovered
+    if hover:
+        pygame.draw.rect(screen, tuple(min(255, c + 30) for c in color), button_rect, border_radius=5)
+    else:
+        pygame.draw.rect(screen, color, button_rect, border_radius=5)
+    
+    # Draw button border
+    pygame.draw.rect(screen, WHITE, button_rect, width=1, border_radius=5)
+    
+    # Draw text
+    font = pygame.font.SysFont(None, 24)
+    text_surface = font.render(text, True, WHITE)
+    text_rect = text_surface.get_rect(center=button_rect.center)
+    screen.blit(text_surface, text_rect)
+    
+    return button_rect
+
+def draw_configuration_buttons(screen: pygame.Surface, mouse_pos: Tuple[int, int]) -> Tuple[pygame.Rect, pygame.Rect, pygame.Rect, pygame.Rect]:
+    """Draw configuration buttons and return their rects"""
+    # Check if mouse is over buttons
+    save_rect = pygame.Rect(SAVE_BUTTON_X, SAVE_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    load_rect = pygame.Rect(LOAD_BUTTON_X, LOAD_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    color_rect = pygame.Rect(COLOR_BUTTON_X, COLOR_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    graph_rect = pygame.Rect(GRAPH_BUTTON_X, GRAPH_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    
+    save_hover = save_rect.collidepoint(mouse_pos)
+    load_hover = load_rect.collidepoint(mouse_pos)
+    color_hover = color_rect.collidepoint(mouse_pos)
+    graph_hover = graph_rect.collidepoint(mouse_pos)
+    
+    # Draw buttons
+    save_rect = draw_button(screen, "Save Config", SAVE_BUTTON_X, SAVE_BUTTON_Y, 
+                          BUTTON_WIDTH, BUTTON_HEIGHT, (0, 100, 150), save_hover)
+    
+    load_rect = draw_button(screen, "Load Config", LOAD_BUTTON_X, LOAD_BUTTON_Y, 
+                          BUTTON_WIDTH, BUTTON_HEIGHT, (0, 120, 100), load_hover)
+    
+    # Draw color scheme button with current scheme name
+    scheme_name = current_scheme.name.split()[0]  # Get just first word to fit button
+    color_rect = draw_button(screen, f"Color: {scheme_name}", COLOR_BUTTON_X, COLOR_BUTTON_Y, 
+                           BUTTON_WIDTH, BUTTON_HEIGHT, (100, 80, 140), color_hover)
+    
+    # Draw graph toggle button
+    graph_status = "On" if activity_tracker.enabled else "Off"
+    graph_rect = draw_button(screen, f"Graph: {graph_status}", GRAPH_BUTTON_X, GRAPH_BUTTON_Y,
+                           BUTTON_WIDTH, BUTTON_HEIGHT, (140, 80, 100), graph_hover)
+    
+    return save_rect, load_rect, color_rect, graph_rect
+
+class ActivityTracker:
+    """Tracks neural activity over time to visualize patterns"""
+    
+    def __init__(self, history_length: int = 200):
+        self.history_length = history_length
+        self.enabled = False
+        self.visible = False
+        self.history = []
+        self.functional_history = {}  # Separate history for each functional type
+        self.last_update_time = 0
+        self.update_interval = 0.1  # Update every 100ms
+    
+    def update(self, neurons: List[Neuron], current_time: float):
+        """Update activity history"""
+        if not self.enabled:
+            return
+            
+        # Only update at specified intervals
+        if current_time - self.last_update_time < self.update_interval:
+            return
+            
+        self.last_update_time = current_time
+        
+        # Calculate average activation of all neurons
+        total_activation = sum(n.activation for n in neurons if n.active)
+        avg_activation = total_activation / max(1, len([n for n in neurons if n.active]))
+        
+        # Add to history and limit length
+        self.history.append(avg_activation)
+        if len(self.history) > self.history_length:
+            self.history = self.history[-self.history_length:]
+        
+        # Group functional neurons by label
+        functional_neurons = {}
+        for neuron in neurons:
+            if not neuron.active:
+                continue
+                
+            if hasattr(neuron, 'is_functional') and neuron.is_functional and hasattr(neuron, 'label'):
+                # Get first word of label as key
+                key = neuron.label.split()[0]
+                if key not in functional_neurons:
+                    functional_neurons[key] = []
+                functional_neurons[key].append(neuron)
+        
+        # Calculate average activation for each functional type
+        for key, neurons_list in functional_neurons.items():
+            if not neurons_list:
+                continue
+                
+            avg = sum(n.activation for n in neurons_list) / len(neurons_list)
+            
+            if key not in self.functional_history:
+                self.functional_history[key] = []
+                
+            self.functional_history[key].append(avg)
+            
+            # Limit history length
+            if len(self.functional_history[key]) > self.history_length:
+                self.functional_history[key] = self.functional_history[key][-self.history_length:]
+    
+    def toggle(self):
+        """Toggle activity tracking on/off"""
+        self.enabled = not self.enabled
+        if not self.enabled:
+            self.visible = False
+            # Clear history when disabling
+            self.history = []
+            self.functional_history = {}
+        return self.enabled
+    
+    def toggle_visibility(self):
+        """Toggle graph visibility"""
+        if self.enabled:
+            self.visible = not self.visible
+        return self.visible
+    
+    def draw(self, screen: pygame.Surface):
+        """Draw the activity graph"""
+        if not self.visible or not self.history:
+            return
+            
+        # Create semi-transparent panel
+        panel_surface = pygame.Surface((GRAPH_PANEL_WIDTH, GRAPH_PANEL_HEIGHT), pygame.SRCALPHA)
+        pygame.draw.rect(panel_surface, PANEL_BG_COLOR, panel_surface.get_rect(), border_radius=5)
+        
+        # Panel title
+        font = pygame.font.SysFont(None, 22)
+        title = font.render("Neural Activity Over Time", True, WHITE)
+        panel_surface.blit(title, (10, 10))
+        
+        # Draw graph axes
+        margin = 30
+        graph_x = margin
+        graph_y = margin
+        graph_width = GRAPH_PANEL_WIDTH - margin * 2
+        graph_height = GRAPH_PANEL_HEIGHT - margin * 2
+        
+        # Draw axis lines
+        pygame.draw.line(panel_surface, GRAY, 
+                       (graph_x, graph_y), 
+                       (graph_x, graph_y + graph_height), 1)
+        pygame.draw.line(panel_surface, GRAY, 
+                       (graph_x, graph_y + graph_height), 
+                       (graph_x + graph_width, graph_y + graph_height), 1)
+        
+        # Get a subset of functional histories to display (max 5)
+        display_types = list(self.functional_history.keys())[:5] if self.functional_history else []
+        
+        # Draw overall activity graph
+        if self.history:
+            # Draw overall activation line (white)
+            points = []
+            for i, activation in enumerate(self.history):
+                x = graph_x + (i / (len(self.history) - 1 or 1)) * graph_width
+                y = graph_y + graph_height - activation * graph_height
+                points.append((x, y))
+                
+            if len(points) > 1:
+                pygame.draw.lines(panel_surface, WHITE, False, points, 2)
+        
+        # Draw functional type graphs with distinct colors
+        colors = [(255, 100, 100), (100, 255, 100), (100, 100, 255), 
+                 (255, 255, 100), (255, 100, 255)]
+                 
+        # Legend entries to show
+        legend_entries = []
+                 
+        for i, (key, history) in enumerate(self.functional_history.items()):
+            if i >= len(colors) or not history:
+                continue
+                
+            # Select color for this functional type
+            color = colors[i]
+            
+            # Draw a colored line for this functional type
+            points = []
+            for j, activation in enumerate(history):
+                x = graph_x + (j / (len(history) - 1 or 1)) * graph_width
+                y = graph_y + graph_height - activation * graph_height
+                points.append((x, y))
+                
+            if len(points) > 1:
+                pygame.draw.lines(panel_surface, color, False, points, 2)
+                
+            # Add to legend
+            legend_entries.append((key, color))
+        
+        # Draw the legend
+        legend_x = graph_x + graph_width - 100
+        legend_y = graph_y + 10
+        
+        # Add "All" entry for overall activity
+        legend_entries.insert(0, ("All", WHITE))
+        
+        for i, (label, color) in enumerate(legend_entries):
+            y_pos = legend_y + i * 20
+            # Draw color indicator
+            pygame.draw.line(panel_surface, color, 
+                           (legend_x, y_pos + 8), 
+                           (legend_x + 20, y_pos + 8), 2)
+            # Draw label
+            label_text = font.render(label, True, color)
+            panel_surface.blit(label_text, (legend_x + 25, y_pos))
+        
+        # Draw the panel
+        screen.blit(panel_surface, (GRAPH_PANEL_X, GRAPH_PANEL_Y))
+
+# Create a global activity tracker
+activity_tracker = ActivityTracker()
 
 def main():
     try:
         print("Starting main function")
-        # Remove timeout
-        start_execution = time.time()
         
+        # Initialize display
         screen = pygame.display.set_mode((WIDTH, HEIGHT))
         print(f"Display mode set: {pygame.display.get_driver()}")
         pygame.display.set_caption("Neural Sphere Simulation")
         clock = pygame.time.Clock()
         start_time = time.time()
         
-        # Show immediate feedback to user that something is happening
-        screen.fill(BLACK)
-        font = pygame.font.SysFont(None, 36)
-        text = font.render("Initializing Neural Simulation...", True, WHITE)
-        screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
-        pygame.display.flip()
+        # Show initial loading screen
+        draw_loading_screen(screen, 0.0, "Initializing Simulation", "Setting up environment...")
+        pygame.time.delay(300)  # Add a short delay to avoid tips changing too fast
         
         # Initialize camera with simpler settings
         camera = Camera()
         camera.auto_rotate = True
         camera.auto_rotate_speed = 0.0001
+        draw_loading_screen(screen, 0.1, "Initializing Simulation", "Camera system ready...")
+        pygame.time.delay(300)  # Add delay between loading steps
         
         # Create fewer neurons for better performance
         reduced_neurons = min(NUM_NEURONS, 30)  # Cap at 30 for initial loading
         print(f"Creating initial neurons (reduced to {reduced_neurons})...")
         
-        # Create neurons with a time limit
+        # Create neurons with loading progress
+        draw_loading_screen(screen, 0.2, "Creating Neural Network", "Generating neurons...")
         neuron_start = time.time()
         neurons = generate_neurons_fibonacci(reduced_neurons)
         print(f"Generated neurons in {time.time() - neuron_start:.2f}s")
+        pygame.time.delay(300)  # Add delay between loading steps
+        
+        # Update loading progress
+        draw_loading_screen(screen, 0.4, "Creating Neural Network", "Establishing neural connections...")
+        pygame.time.delay(300)  # Add delay between loading steps
         
         # Create connections with a time limit
         connection_start = time.time()
         create_connections(neurons)
         print(f"Created connections in {time.time() - connection_start:.2f}s")
         
-        # Show progress update
-        screen.fill(BLACK)
-        text = font.render("Processing Neural Network...", True, WHITE)
-        screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
-        pygame.display.flip()
+        # Update loading progress
+        draw_loading_screen(screen, 0.6, "Initializing Neural States", "Setting neuron activations...")
+        pygame.time.delay(300)  # Add delay between loading steps
         
         # Activate a few neurons to make it visually interesting
         num_initial_active = 5  # Just activate a few neurons
@@ -1118,6 +1818,10 @@ def main():
         for neuron in active_neurons:
             neuron.activation = random.uniform(0.5, 1.0)
             neuron.firing = random.choice([True, False])
+            # Pause to show animation - use fewer pauses and longer delays
+            if random.random() < 0.2:  # Only animate 20% of neurons for a smoother experience
+                draw_loading_screen(screen, 0.65, "Initializing Neural States", f"Activating {neuron.label if hasattr(neuron, 'label') and neuron.label else 'neuron'}...")
+                pygame.time.delay(150)  # Increased delay for better visibility
         
         # UI state - Restore slider
         mouse_dragging = False
@@ -1125,19 +1829,67 @@ def main():
         last_mouse_pos = None
         current_neuron_count = reduced_neurons
         drag_threshold = 3
+        save_message = ""
+        save_message_time = 0
         
-        # Simple frame to verify display
-        screen.fill(BLACK)
-        text = font.render("Starting Simulation...", True, WHITE)
-        screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
-        pygame.display.flip()
-        print("Initial frame drawn")
+        # Update loading progress
+        draw_loading_screen(screen, 0.8, "Preparing Visualization", "Computing neural projections...")
+        pygame.time.delay(300)  # Add delay between loading steps
         
         # Do initial projection
         print("Initial projection...")
         projection_start = time.time()
         project_neurons(neurons, camera)
         print(f"Initial projection completed in {time.time() - projection_start:.2f}s")
+        
+        # Final loading screen - slower progression
+        for i in range(5):  # Reduced steps for smoother progression
+            progress = 0.8 + (i+1) * 0.04  # Larger steps (4% each)
+            draw_loading_screen(screen, progress, "Starting Simulation", "Almost ready...")
+            pygame.time.delay(200)  # Longer delay for better visibility
+        
+        # Ready to start! - show a clear "press key" message
+        font = pygame.font.SysFont(None, 36)
+        waiting_for_key = True
+        start_wait_time = time.time()
+        
+        # Wait for user to press a key
+        while waiting_for_key:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+                elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                    waiting_for_key = False
+            
+            # Pulsing "Press any key" text
+            pulse = (math.sin((time.time() - start_wait_time) * 2) + 1) / 2
+            alpha = int(155 + pulse * 100)  # Pulsing transparency
+            
+            # Draw the regular loading screen
+            draw_loading_screen(screen, 1.0, "Simulation Ready", "")
+            
+            # Add pulsing "Press any key" message
+            key_text = "Press any key to begin"
+            key_surface = font.render(key_text, True, (200, 200, 255, alpha))
+            
+            # Create alpha surface for the pulsing text
+            text_surface = pygame.Surface((key_surface.get_width(), key_surface.get_height()), pygame.SRCALPHA)
+            text_surface.fill((0, 0, 0, 0))  # Transparent background
+            text_surface.blit(key_surface, (0, 0))
+            
+            # Apply alpha based on pulse
+            text_surface.set_alpha(alpha)
+            
+            # Position at center
+            screen.blit(text_surface, 
+                      (WIDTH//2 - key_surface.get_width()//2, 
+                       HEIGHT * 3//4 + 80))  # Below progress bar
+            
+            pygame.display.flip()
+            pygame.time.delay(50)  # Smoother animation
+        
+        print("Initial frame drawn")
         
         # Main loop variables
         running = True
@@ -1151,7 +1903,7 @@ def main():
             frame_count += 1
             current_time = time.time() - start_time
             
-            # Get current mouse position for tooltips
+            # Get current mouse position for tooltips and button hover
             current_mouse_pos = pygame.mouse.get_pos()
             
             # Process events
@@ -1169,8 +1921,43 @@ def main():
                                 current_neuron_count = new_count
                                 neurons = update_neurons(current_neuron_count)
                         else:
-                            last_mouse_pos = event.pos
-                            camera.auto_rotate = False  # Disable auto-rotation when starting manual rotation
+                            # Check for button clicks
+                            save_rect, load_rect, color_rect, graph_rect = draw_configuration_buttons(screen, (-1, -1))  # Get rects without drawing
+                            
+                            if save_rect.collidepoint(event.pos):
+                                # Save configuration
+                                if save_network_configuration(neurons):
+                                    save_message = "Configuration saved!"
+                                else:
+                                    save_message = "Save failed!"
+                                save_message_time = time.time()
+                            elif load_rect.collidepoint(event.pos):
+                                # Load configuration
+                                loaded_neurons = load_network_configuration()
+                                if loaded_neurons:
+                                    neurons = loaded_neurons
+                                    current_neuron_count = len(neurons)
+                                    save_message = "Configuration loaded!"
+                                else:
+                                    save_message = "Load failed!"
+                                save_message_time = time.time()
+                            elif color_rect.collidepoint(event.pos):
+                                # Cycle through color schemes
+                                new_index = (CURRENT_SCHEME_INDEX + 1) % len(COLOR_SCHEMES)
+                                update_color_scheme(new_index)
+                                save_message = f"Color: {current_scheme.name}"
+                                save_message_time = time.time()
+                            elif graph_rect.collidepoint(event.pos):
+                                # Toggle activity tracking
+                                activity_tracker.toggle()
+                                # Always show graph when enabled
+                                if activity_tracker.enabled:
+                                    activity_tracker.visible = True
+                                save_message = f"Graph: {'On' if activity_tracker.enabled else 'Off'}"
+                                save_message_time = time.time()
+                            else:
+                                last_mouse_pos = event.pos
+                                camera.auto_rotate = False  # Disable auto-rotation when starting manual rotation
                     
                     elif event.button == 3:  # Right mouse button
                         clicked_neuron = find_clicked_neuron(event.pos, neurons, camera)
@@ -1220,6 +2007,41 @@ def main():
                         if new_count != current_neuron_count:
                             current_neuron_count = new_count
                             neurons = update_neurons(current_neuron_count)
+                
+                # Add keyboard event handling
+                elif event.type == pygame.KEYDOWN:
+                    # Add keyboard shortcut support
+                    if event.key == pygame.K_g:
+                        # G key toggles graph visibility
+                        if activity_tracker.enabled:
+                            activity_tracker.toggle_visibility()
+                            save_message = f"Graph: {'Visible' if activity_tracker.visible else 'Hidden'}"
+                            save_message_time = time.time()
+                        else:
+                            # Enable and make visible if not enabled
+                            activity_tracker.enabled = True
+                            activity_tracker.visible = True
+                            save_message = "Graph: Enabled & Visible"
+                            save_message_time = time.time()
+                    elif event.key == pygame.K_a:
+                        # A key toggles auto-rotation
+                        camera.auto_rotate = not camera.auto_rotate
+                        save_message = f"Auto-rotate: {'On' if camera.auto_rotate else 'Off'}"
+                        save_message_time = time.time()
+                    elif event.key == pygame.K_c:
+                        # C key cycles color schemes
+                        new_index = (CURRENT_SCHEME_INDEX + 1) % len(COLOR_SCHEMES)
+                        update_color_scheme(new_index)
+                        save_message = f"Color: {current_scheme.name}"
+                        save_message_time = time.time()
+                    elif event.key == pygame.K_r:
+                        # R key resets camera rotation
+                        camera.rotation_x = 0
+                        camera.rotation_y = 0
+                        camera.rotation_z = 0
+                        camera.distance = 1.0
+                        save_message = "Camera Reset"
+                        save_message_time = time.time()
             
             # Update camera
             camera.update()
@@ -1245,6 +2067,9 @@ def main():
                     # Update neurons
                     for neuron in neurons:
                         neuron.update(current_time)
+                        
+                # Update activity tracker
+                activity_tracker.update(neurons, current_time)
             else:
                 # Very simplified updates for performance mode
                 for neuron in neurons:
@@ -1256,6 +2081,10 @@ def main():
                 
                 # Project neurons
                 project_neurons(neurons, camera)
+                
+                # Still update activity tracker even in performance mode
+                if activity_tracker.enabled:
+                    activity_tracker.update(neurons, current_time)
             
             # Monitor performance
             update_time = time.time() - update_start
@@ -1276,10 +2105,22 @@ def main():
             # Drawing (with timeout protection)
             draw_start = time.time()
             try:
-                screen.fill(BLACK)
+                screen.fill(BLACK)  # Now uses the current scheme's background color
                 
                 # Draw neurons
                 draw_neurons(screen, neurons, current_time, current_mouse_pos)
+                
+                # Draw statistics panel
+                draw_statistics_panel(screen, neurons, current_time)
+                
+                # Draw configuration buttons
+                save_rect, load_rect, color_rect, graph_rect = draw_configuration_buttons(screen, current_mouse_pos)
+                
+                # Show save/load message if recent
+                if save_message and time.time() - save_message_time < 3:
+                    font = pygame.font.SysFont(None, 24)
+                    message_surface = font.render(save_message, True, WHITE)
+                    screen.blit(message_surface, (SAVE_BUTTON_X, SAVE_BUTTON_Y + BUTTON_HEIGHT + 10))
                 
                 # Restore slider drawing
                 draw_neuron_slider(screen, current_neuron_count, slider_dragging)
@@ -1294,6 +2135,10 @@ def main():
                 
                 # Draw controls
                 draw_controls(screen)
+                
+                # Draw activity graph if enabled
+                if activity_tracker.visible:
+                    activity_tracker.draw(screen)
                 
                 pygame.display.flip()
                 
